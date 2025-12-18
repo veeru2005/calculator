@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowDownUp, Search, X, History, Calculator, DollarSign, ArrowLeft } from "lucide-react";
 
 interface ExchangeRates {
@@ -102,6 +102,8 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
   const [rates, setRates] = useState<ExchangeRates>({});
   const [result, setResult] = useState<string>("0");
   const [loading, setLoading] = useState<boolean>(true);
+  const [pairLoading, setPairLoading] = useState<boolean>(false);
+  const [pairRate, setPairRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [showCurrencyPicker, setShowCurrencyPicker] = useState<boolean>(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
@@ -109,6 +111,82 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
   const [currencies, setCurrencies] = useState<Currency[]>(baseCurrencies);
   const [currenciesLoading, setCurrenciesLoading] = useState<boolean>(true);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
+
+  const pairRateCacheRef = useRef<Map<string, { rate: number; date?: string }>>(new Map());
+
+  const formatUpdated = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const fetchPairRate = async (from: string, to: string) => {
+    const fromUpper = from.toUpperCase();
+    const toUpper = to.toUpperCase();
+    const fromLower = from.toLowerCase();
+    const toLower = to.toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
+
+    const providers = [
+      {
+        name: "exchangerate-api-pair",
+        url: `https://open.er-api.com/v6/latest/${fromUpper}`,
+        extract: (data: any) => {
+          const normalized = normalizeRates(data?.rates as ExchangeRates);
+          return normalized?.[toUpper];
+        },
+        extractDate: (data: any) =>
+          data?.time_last_update_utc
+            ? new Date(data.time_last_update_utc).toISOString()
+            : undefined,
+      },
+      {
+        name: "fawazahmed-currency-api-latest",
+        url: `https://latest.currency-api.pages.dev/v1/currencies/${fromLower}.json`,
+        extract: (data: any) => data?.[fromLower]?.[toLower],
+        extractDate: (data: any) => data?.date as string | undefined,
+      },
+      {
+        name: "fawazahmed-currency-api-jsdelivr-latest",
+        url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${fromLower}.json`,
+        extract: (data: any) => data?.[fromLower]?.[toLower],
+        extractDate: (data: any) => data?.date as string | undefined,
+      },
+      {
+        name: "fawazahmed-currency-api-dated",
+        url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${today}/v1/currencies/${fromLower}.json`,
+        extract: (data: any) => data?.[fromLower]?.[toLower],
+        extractDate: (data: any) => data?.date as string | undefined,
+      },
+    ];
+
+    for (const provider of providers) {
+      try {
+        const res = await fetch(provider.url, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+        if (!res.ok) throw new Error(`${provider.name} responded ${res.status}`);
+        const data = await res.json();
+        const raw = provider.extract(data);
+        const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseFloat(raw) : NaN;
+        if (Number.isFinite(parsed) && parsed > 0) {
+          return { rate: parsed, date: provider.extractDate(data), provider: provider.name };
+        }
+      } catch (err) {
+        console.warn(`Pair provider ${provider.name} failed`, err);
+      }
+    }
+
+    throw new Error("Rate unavailable across pair providers");
+  };
 
   // Pull latest ISO-4217 currencies with flags so we cover every country automatically.
   useEffect(() => {
@@ -161,92 +239,97 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
     };
   }, []);
 
-  // Fetch exchange rates from multiple providers with cache-busting for most accurate rates
+  // Fetch exchange rates using USD as base for accurate cross-currency conversion
   const fetchRates = async () => {
+    console.log("🚀 Starting fetchRates...");
+    setLoading(true);
+
+    const RATES_CACHE_KEY = "currencyRatesUSD_v2";
+
+    // Try the most reliable API first
     try {
-      setLoading(true);
-
-      const today = new Date().toISOString().split('T')[0];
-      const providers = [
-        {
-          name: "fawazahmed-currency-api",
-          url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${today}/v1/currencies/${fromCurrency.toLowerCase()}.json`,
-          extractRates: (data: any) => data?.[fromCurrency.toLowerCase()] as ExchangeRates,
-          extractDate: (data: any) => data?.date as string | undefined,
-        },
-        {
-          name: "fawazahmed-currency-api-latest",
-          url: `https://latest.currency-api.pages.dev/v1/currencies/${fromCurrency.toLowerCase()}.json`,
-          extractRates: (data: any) => data?.[fromCurrency.toLowerCase()] as ExchangeRates,
-          extractDate: (data: any) => data?.date as string | undefined,
-        },
-        {
-          name: "frankfurter",
-          url: `https://api.frankfurter.app/latest?from=${fromCurrency}&t=${Date.now()}`,
-          extractRates: (data: any) => data?.rates as ExchangeRates,
-          extractDate: (data: any) => data?.date as string | undefined,
-        },
-        {
-          name: "exchangerate-api",
-          url: `https://open.er-api.com/v6/latest/${fromCurrency}`,
-          extractRates: (data: any) => data?.rates as ExchangeRates,
-          extractDate: (data: any) => data?.time_last_update_utc ? new Date(data.time_last_update_utc).toISOString() : undefined,
-        },
-      ];
-
-      let nextRates: ExchangeRates | null = null;
-      let providerDate: string | undefined;
-
-      for (const provider of providers) {
-        try {
-          const res = await fetch(provider.url, {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache',
-            },
-          });
-          if (!res.ok) throw new Error(`${provider.name} responded ${res.status}`);
-          const data = await res.json();
-          const rates = normalizeRates(provider.extractRates(data));
-          if (rates && Object.keys(rates).length > 0 && rates[toCurrency]) {
-            nextRates = rates;
-            providerDate = provider.extractDate(data);
-            console.log(`Using provider: ${provider.name}, USD->INR: ${rates['INR']}`);
-            break;
-          }
-        } catch (err) {
-          console.warn(`Provider ${provider.name} failed`, err);
+      console.log("📡 Fetching from open.er-api.com...");
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      console.log("📡 Response status:", res.status);
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log("📡 Data received, rates count:", Object.keys(data?.rates || {}).length);
+        
+        if (data?.rates && Object.keys(data.rates).length > 30) {
+          const normalized = normalizeRates(data.rates);
+          normalized['USD'] = 1;
+          
+          console.log("✅ Rates loaded successfully!");
+          console.log("   USD:", normalized['USD'], "INR:", normalized['INR'], "EUR:", normalized['EUR'], "GEL:", normalized['GEL']);
+          
+          setRates(normalized);
+          const updated = data.time_last_update_utc ? new Date(data.time_last_update_utc) : new Date();
+          setLastUpdated(formatUpdated(updated));
+          
+          // Cache for offline use
+          try {
+            localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates: normalized, updated: formatUpdated(updated) }));
+          } catch {}
+          
+          setLoading(false);
+          return;
         }
       }
-
-      if (!nextRates) {
-        throw new Error("Rate unavailable across providers");
-      }
-
-      setRates(nextRates);
-
-      const updated = providerDate ? new Date(providerDate) : new Date();
-      setLastUpdated(updated.toLocaleString('en-US', { 
-        month: '2-digit', 
-        day: '2-digit', 
-        year: '2-digit', 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      }));
-    } catch (error) {
-      console.error("Error fetching rates:", error);
-      setRates({});
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.warn("❌ open.er-api.com failed:", err);
     }
+
+    // Fallback to fawazahmed API
+    try {
+      console.log("📡 Trying fallback: latest.currency-api.pages.dev...");
+      const res = await fetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json");
+      
+      if (res.ok) {
+        const data = await res.json();
+        
+        if (data?.usd && Object.keys(data.usd).length > 30) {
+          const normalized = normalizeRates(data.usd);
+          normalized['USD'] = 1;
+          
+          console.log("✅ Fallback rates loaded!");
+          console.log("   USD:", normalized['USD'], "INR:", normalized['INR'], "EUR:", normalized['EUR']);
+          
+          setRates(normalized);
+          setLastUpdated(formatUpdated(new Date(data.date || Date.now())));
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("❌ Fallback API failed:", err);
+    }
+
+    // Try localStorage cache
+    try {
+      const cached = localStorage.getItem(RATES_CACHE_KEY);
+      if (cached) {
+        const { rates: cachedRates, updated } = JSON.parse(cached);
+        if (cachedRates && Object.keys(cachedRates).length > 30) {
+          console.log("📦 Using cached rates");
+          setRates(cachedRates);
+          if (updated) setLastUpdated(updated);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {}
+
+    console.error("❌ All rate sources failed!");
+    setRates({});
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchRates();
     const interval = setInterval(fetchRates, 300000);
     return () => clearInterval(interval);
-  }, [fromCurrency]);
+  }, []); // Fetch once on mount, no dependency on fromCurrency since we use USD base
 
   // Keyboard support
   useEffect(() => {
@@ -290,16 +373,85 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [amount, showCurrencyPicker]);
 
-  // Calculate conversion
+  // Resolve a rate for the selected pair (prefer USD-table, fallback to direct pair API).
   useEffect(() => {
-    if (rates[toCurrency] && amount) {
-      const amountNum = parseFloat(amount);
-      if (!isNaN(amountNum)) {
-        const converted = amountNum * rates[toCurrency];
-        setResult(converted.toFixed(2));
-      }
+    // Wait for main rates fetch to complete before resolving pair
+    if (loading) {
+      return;
     }
-  }, [amount, toCurrency, rates]);
+
+    let cancelled = false;
+
+    const resolvePairRate = async () => {
+      const from = fromCurrency.toUpperCase();
+      const to = toCurrency.toUpperCase();
+
+      if (from === to) {
+        setPairRate(1);
+        setPairLoading(false);
+        return;
+      }
+
+      // Check if both currencies exist in the USD-base rates table
+      const fromRate = rates[from];
+      const toRate = rates[to];
+      if (typeof fromRate === 'number' && fromRate > 0 && typeof toRate === 'number') {
+        const crossRate = toRate / fromRate;
+        console.log(`✓ Cross-rate from table: 1 ${from} = ${crossRate} ${to}`);
+        setPairRate(crossRate);
+        setPairLoading(false);
+        return;
+      }
+
+      // Fallback: check pair rate cache
+      const cacheKey = `${from}->${to}`;
+      const cached = pairRateCacheRef.current.get(cacheKey);
+      if (cached) {
+        setPairRate(cached.rate);
+        if (cached.date) setLastUpdated(formatUpdated(new Date(cached.date)));
+        setPairLoading(false);
+        return;
+      }
+
+      // Fallback: fetch direct pair rate from API
+      console.log(`⏳ Fetching direct pair rate: ${from} → ${to}`);
+      setPairLoading(true);
+      try {
+        const resolved = await fetchPairRate(from, to);
+        if (cancelled) return;
+        console.log(`✓ Direct pair rate: 1 ${from} = ${resolved.rate} ${to} (${resolved.provider})`);
+        pairRateCacheRef.current.set(cacheKey, { rate: resolved.rate, date: resolved.date });
+        setPairRate(resolved.rate);
+        if (resolved.date) setLastUpdated(formatUpdated(new Date(resolved.date)));
+      } catch (err) {
+        console.error(`✗ Failed to get rate for ${from} → ${to}`, err);
+        if (!cancelled) setPairRate(null);
+      } finally {
+        if (!cancelled) setPairLoading(false);
+      }
+    };
+
+    resolvePairRate();
+    return () => {
+      cancelled = true;
+    };
+  }, [fromCurrency, toCurrency, rates, loading]);
+
+  // Calculate conversion using resolved pair rate
+  useEffect(() => {
+    const amountNum = parseFloat(amount);
+    if (!amount || Number.isNaN(amountNum)) {
+      setResult("0");
+      return;
+    }
+
+    if (pairRate && pairRate > 0) {
+      setResult((amountNum * pairRate).toFixed(2));
+      return;
+    }
+
+    setResult("Rate unavailable");
+  }, [amount, pairRate]);
 
   const handleSwapCurrencies = () => {
     const temp = fromCurrency;
@@ -514,7 +666,7 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
           </div>
           <div className="flex-1 text-right">
             <p className="text-5xl sm:text-3xl md:text-4xl font-bold text-foreground">
-              {loading ? "..." : result}
+              {loading || pairLoading ? "..." : result}
             </p>
           </div>
         </button>
@@ -627,9 +779,9 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
       {/* Bottom Info */}
       <div className="pt-4 pb-10 px-3 sm:p-4 border-t border-border bg-background/50">
         <div className="space-y-1">
-          {rates[toCurrency] && fromCurrency !== toCurrency && (
+          {pairRate !== null && fromCurrency !== toCurrency && !loading && !pairLoading && result !== "Rate unavailable" && (
             <p className="text-xs text-muted-foreground text-center mb-1.5">
-              {lastUpdated} • 1 {fromCurrency} = {rates[toCurrency].toFixed(2)} {toCurrency}
+              {lastUpdated} • 1 {fromCurrency} = {pairRate.toFixed(4)} {toCurrency}
             </p>
           )}
           <p className="hidden sm:block text-xs text-muted-foreground text-center">
@@ -642,4 +794,3 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
 };
 
 export default CurrencyConverter;
-
