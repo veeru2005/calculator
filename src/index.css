@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+
+    --primary: 250 85% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 30% 25%;
+
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 15% 50%;
+
+    --accent: 180 70% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 250 85% 60%;
+
+    --radius: 1rem;
+
+    /* Custom Calculator Tokens */
+    --calc-bg: 220 20% 95%;
+    --calc-display: 0 0% 100%;
+    --calc-button: 220 15% 98%;
+    --calc-button-hover: 220 15% 94%;
+    --calc-operator: 250 85% 60%;
+    --calc-operator-hover: 250 85% 55%;
+    --calc-equals: 180 70% 45%;
+    --calc-equals-hover: 180 70% 40%;
+    --calc-number: 220 30% 20%;
+    --calc-glow: 250 85% 60%;
+
+    /* Animation Colors */
+    --shape-1: 250 85% 65%;
+    --shape-2: 180 70% 50%;
+    --shape-3: 320 80% 60%;
+    --shape-4: 40 90% 55%;
+
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.5;
+  }
+
+  .dark {
+    --background: 225 30% 8%;
+    --foreground: 220 20% 95%;
+
+    --card: 225 25% 12%;
+    --card-foreground: 220 20% 95%;
+
+    --popover: 225 25% 12%;
+    --popover-foreground: 220 20% 95%;
+
+    --primary: 250 85% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 20% 18%;
+    --secondary-foreground: 220 20% 90%;
+
+    --muted: 225 20% 15%;
+    --muted-foreground: 220 15% 55%;
+
+    --accent: 180 70% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 20% 20%;
+    --input: 225 20% 20%;
+    --ring: 250 85% 65%;
+
+    /* Custom Calculator Tokens - Dark */
+    --calc-bg: 225 25% 10%;
+    --calc-display: 225 30% 15%;
+    --calc-button: 225 25% 18%;
+    --calc-button-hover: 225 25% 25%;
+    --calc-operator: 250 85% 65%;
+    --calc-operator-hover: 250 85% 70%;
+    --calc-equals: 180 70% 50%;
+    --calc-equals-hover: 180 70% 55%;
+    --calc-number: 220 20% 95%;
+    --calc-glow: 250 85% 65%;
+
+    /* Animation Colors - Dark */
+    --shape-1: 250 85% 55%;
+    --shape-2: 180 70% 45%;
+    --shape-3: 320 80% 50%;
+    --shape-4: 40 90% 50%;
+
+    --glass-bg: 225 25% 15% / 0.8;
+    --glass-border: 225 25% 30% / 0.5;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Quicksand', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-xl border shadow-2xl;
+    background: hsl(var(--glass-bg));
+    border-color: hsl(var(--glass-border));
+  }
+
+  .calc-display {
+    @apply text-right;
+    font-family: 'Quicksand', sans-serif;
+    background: hsl(var(--calc-display));
+  }
+
+  .calc-button {
+    @apply transition-all duration-200 font-semibold;
+    background: hsl(var(--calc-button));
+    color: hsl(var(--calc-number));
+  }
+
+  .calc-button:hover {
+    background: hsl(var(--calc-button-hover));
+    transform: scale(1.05);
+  }
+
+  .calc-button:active {
+    transform: scale(0.95);
+  }
+
+  .calc-operator {
+    background: hsl(var(--calc-operator));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .calc-operator:hover {
+    background: hsl(var(--calc-operator-hover));
+  }
+
+  .calc-equals {
+    background: hsl(var(--calc-equals));
+    color: hsl(var(--accent-foreground));
+  }
+
+  .calc-equals:hover {
+    background: hsl(var(--calc-equals-hover));
+  }
+}
+
+@layer utilities {
+  .animate-float-1 {
+    animation: float1 20s ease-in-out infinite;
+  }
+
+  .animate-float-2 {
+    animation: float2 25s ease-in-out infinite;
+  }
+
+  .animate-float-3 {
+    animation: float3 18s ease-in-out infinite;
+  }
+
+  .animate-float-4 {
+    animation: float4 22s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+}
+
+@keyframes float1 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(100px, -100px) rotate(90deg); }
+  50% { transform: translate(50px, 100px) rotate(180deg); }
+  75% { transform: translate(-50px, 50px) rotate(270deg); }
+}
+
+@keyframes float2 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(-80px, 80px) rotate(120deg); }
+  66% { transform: translate(80px, -40px) rotate(240deg); }
+}
+
+@keyframes float3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, -60px) scale(1.2); }
+}
+
+@keyframes float4 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-60px, -80px) rotate(-90deg); }
+  50% { transform: translate(40px, -120px) rotate(-180deg); }
+  75% { transform: translate(80px, -40px) rotate(-270deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--calc-glow) / 0.3); }
+  50% { box-shadow: 0 0 40px hsl(var(--calc-glow) / 0.6); }
+}

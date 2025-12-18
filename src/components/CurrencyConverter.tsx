@@ -1,0 +1,506 @@
+import { useState, useEffect } from "react";
+import { ArrowDownUp, Search, X, History, Calculator, DollarSign, ArrowLeft } from "lucide-react";
+
+interface ExchangeRates {
+  [key: string]: number;
+}
+
+interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+  flag: string;
+}
+
+interface CurrencyConverterProps {
+  onOpenHistory?: () => void;
+  mode?: "calculator" | "currency";
+  onModeChange?: (mode: "calculator" | "currency") => void;
+}
+
+const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConverterProps = {}) => {
+  const [amount, setAmount] = useState<string>("1");
+  const [fromCurrency, setFromCurrency] = useState<string>("USD");
+  const [toCurrency, setToCurrency] = useState<string>("INR");
+  const [rates, setRates] = useState<ExchangeRates>({});
+  const [result, setResult] = useState<string>("0");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState<boolean>(false);
+  const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const currencies: Currency[] = [
+    { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
+    { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
+    { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
+    { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
+    { code: "AUD", name: "Australian Dollar", symbol: "A$", flag: "🇦🇺" },
+    { code: "CAD", name: "Canadian Dollar", symbol: "C$", flag: "🇨🇦" },
+    { code: "CHF", name: "Swiss Franc", symbol: "CHF", flag: "🇨🇭" },
+    { code: "CNY", name: "Chinese Yuan", symbol: "¥", flag: "🇨🇳" },
+    { code: "INR", name: "Indian Rupee", symbol: "₹", flag: "🇮🇳" },
+    { code: "MXN", name: "Mexican Peso", symbol: "$", flag: "🇲🇽" },
+    { code: "BRL", name: "Brazilian Real", symbol: "R$", flag: "🇧🇷" },
+    { code: "ZAR", name: "South African Rand", symbol: "R", flag: "🇿🇦" },
+    { code: "SGD", name: "Singapore Dollar", symbol: "S$", flag: "🇸🇬" },
+    { code: "NZD", name: "New Zealand Dollar", symbol: "NZ$", flag: "🇳🇿" },
+    { code: "KRW", name: "South Korean Won", symbol: "₩", flag: "🇰🇷" },
+    { code: "AED", name: "UAE Dirham", symbol: "د.إ", flag: "🇦🇪" },
+    { code: "SAR", name: "Saudi Riyal", symbol: "﷼", flag: "🇸🇦" },
+    { code: "THB", name: "Thai Baht", symbol: "฿", flag: "🇹🇭" },
+    { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
+    { code: "VND", name: "Vietnamese Dong", symbol: "₫", flag: "🇻🇳" },
+    { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
+    { code: "RUB", name: "Russian Ruble", symbol: "₽", flag: "🇷🇺" },
+    { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$", flag: "🇭🇰" },
+    { code: "SEK", name: "Swedish Krona", symbol: "kr", flag: "🇸🇪" },
+    { code: "NOK", name: "Norwegian Krone", symbol: "kr", flag: "🇳🇴" },
+    { code: "DKK", name: "Danish Krone", symbol: "kr", flag: "🇩🇰" },
+    { code: "PLN", name: "Polish Zloty", symbol: "zł", flag: "🇵🇱" },
+    { code: "TRY", name: "Turkish Lira", symbol: "₺", flag: "🇹🇷" },
+    { code: "MYR", name: "Malaysian Ringgit", symbol: "RM", flag: "🇲🇾" },
+    { code: "PHP", name: "Philippine Peso", symbol: "₱", flag: "🇵🇭" },
+    { code: "CZK", name: "Czech Koruna", symbol: "Kč", flag: "🇨🇿" },
+    { code: "ILS", name: "Israeli Shekel", symbol: "₪", flag: "🇮🇱" },
+    { code: "CLP", name: "Chilean Peso", symbol: "$", flag: "🇨🇱" },
+    { code: "ARS", name: "Argentine Peso", symbol: "$", flag: "🇦🇷" },
+    { code: "COP", name: "Colombian Peso", symbol: "$", flag: "🇨🇴" },
+    { code: "PEN", name: "Peruvian Sol", symbol: "S/", flag: "🇵🇪" },
+    { code: "EGP", name: "Egyptian Pound", symbol: "£", flag: "🇪🇬" },
+    { code: "HUF", name: "Hungarian Forint", symbol: "Ft", flag: "🇭🇺" },
+    { code: "RON", name: "Romanian Leu", symbol: "lei", flag: "🇷🇴" },
+    { code: "BGN", name: "Bulgarian Lev", symbol: "лв", flag: "🇧🇬" },
+    { code: "HRK", name: "Croatian Kuna", symbol: "kn", flag: "🇭🇷" },
+    { code: "ISK", name: "Icelandic Króna", symbol: "kr", flag: "🇮🇸" },
+    { code: "UAH", name: "Ukrainian Hryvnia", symbol: "₴", flag: "🇺🇦" },
+    { code: "BDT", name: "Bangladeshi Taka", symbol: "৳", flag: "🇧🇩" },
+    { code: "LKR", name: "Sri Lankan Rupee", symbol: "₨", flag: "🇱🇰" },
+    { code: "NPR", name: "Nepalese Rupee", symbol: "₨", flag: "🇳🇵" },
+    { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك", flag: "🇰🇼" },
+    { code: "BHD", name: "Bahraini Dinar", symbol: "د.ب", flag: "🇧🇭" },
+    { code: "OMR", name: "Omani Rial", symbol: "﷼", flag: "🇴🇲" },
+    { code: "QAR", name: "Qatari Riyal", symbol: "﷼", flag: "🇶🇦" },
+    { code: "KES", name: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪" },
+    { code: "NGN", name: "Nigerian Naira", symbol: "₦", flag: "🇳🇬" },
+    { code: "GHS", name: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭" },
+    { code: "MAD", name: "Moroccan Dirham", symbol: "د.م.", flag: "🇲🇦" },
+    { code: "TWD", name: "Taiwan Dollar", symbol: "NT$", flag: "🇹🇼" },
+  ];
+
+  // Fetch exchange rates from API
+  const fetchRates = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `https://api.exchangerate-api.com/v4/latest/${fromCurrency}`
+      );
+      const data = await response.json();
+      setRates(data.rates);
+      const now = new Date();
+      setLastUpdated(now.toLocaleString('en-US', { 
+        month: '2-digit', 
+        day: '2-digit', 
+        year: '2-digit', 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      }));
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching rates:", error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRates();
+    const interval = setInterval(fetchRates, 300000);
+    return () => clearInterval(interval);
+  }, [fromCurrency]);
+
+  // Keyboard support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showCurrencyPicker) return; // Disable when picker is open
+      
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleNumberClick(e.key);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        handleDecimal();
+      } else if (e.key === "+") {
+        e.preventDefault();
+        handleOperator("+");
+      } else if (e.key === "-") {
+        e.preventDefault();
+        handleOperator("-");
+      } else if (e.key === "*") {
+        e.preventDefault();
+        handleOperator("×");
+      } else if (e.key === "/") {
+        e.preventDefault();
+        handleOperator("÷");
+      } else if (e.key === "%") {
+        e.preventDefault();
+        handlePercentage();
+      } else if (e.key === "Enter" || e.key === "=") {
+        e.preventDefault();
+        handleEquals();
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        handleBackspace();
+      } else if (e.key === "Escape" || e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        handleClear();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [amount, showCurrencyPicker]);
+
+  // Calculate conversion
+  useEffect(() => {
+    if (rates[toCurrency] && amount) {
+      const amountNum = parseFloat(amount);
+      if (!isNaN(amountNum)) {
+        const converted = amountNum * rates[toCurrency];
+        setResult(converted.toFixed(2));
+      }
+    }
+  }, [amount, toCurrency, rates]);
+
+  const handleSwapCurrencies = () => {
+    const temp = fromCurrency;
+    setFromCurrency(toCurrency);
+    setToCurrency(temp);
+    setAmount("1");
+  };
+
+  const handleNumberClick = (num: string) => {
+    setAmount((prev) => {
+      if (prev === "0" || prev === "1" && amount.length === 1) return num;
+      return prev + num;
+    });
+  };
+
+  const handleOperator = (op: string) => {
+    setAmount((prev) => {
+      return prev + " " + op + " ";
+    });
+  };
+
+  const handleEquals = () => {
+    setAmount((prev) => {
+      try {
+        const sanitized = prev.replace(/×/g, "*").replace(/÷/g, "/").replace(/[^0-9+\-*/.() ]/g, "");
+        const result = Function(`"use strict"; return (${sanitized})`)();
+        const formattedResult = Number.isInteger(result) 
+          ? result.toString() 
+          : parseFloat(result.toFixed(8)).toString();
+        return formattedResult;
+      } catch {
+        return prev;
+      }
+    });
+  };
+
+  const handlePercentage = () => {
+    setAmount((prev) => {
+      try {
+        const current = parseFloat(prev);
+        if (!isNaN(current)) {
+          return (current / 100).toString();
+        }
+        return prev;
+      } catch {
+        return prev;
+      }
+    });
+  };
+
+  const handleDecimal = () => {
+    setAmount((prev) => {
+      const currentSegment = prev.split(/[+\-×÷]/).pop()?.trim() ?? prev;
+      if (currentSegment.includes(".")) return prev;
+      return prev + ".";
+    });
+  };
+
+  const handleClear = () => {
+    setAmount("1");
+  };
+
+  const handleBackspace = () => {
+    setAmount((prev) => {
+      if (prev.length > 1) {
+        return prev.slice(0, -1);
+      }
+      return "1";
+    });
+  };
+
+  const handleCurrencySelect = (code: string) => {
+    if (selectingFor === "from") {
+      setFromCurrency(code);
+    } else {
+      setToCurrency(code);
+    }
+    setShowCurrencyPicker(false);
+    setSearchQuery("");
+  };
+
+  const openCurrencyPicker = (type: "from" | "to") => {
+    setSelectingFor(type);
+    setShowCurrencyPicker(true);
+  };
+
+  // Filter currencies: exclude the currently selected one and apply search
+  const filteredCurrencies = currencies.filter((curr) => {
+    // Exclude the currency that's already selected in the other field
+    const excludeCode = selectingFor === "from" ? toCurrency : fromCurrency;
+    if (curr.code === excludeCode) return false;
+    
+    // Apply search filter
+    const matchesSearch =
+      curr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      curr.code.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesSearch;
+  });
+
+  const getCurrency = (code: string) => currencies.find((c) => c.code === code);
+  const fromCurr = getCurrency(fromCurrency);
+  const toCurr = getCurrency(toCurrency);
+
+  if (showCurrencyPicker) {
+    const currentSelection = selectingFor === "from" ? fromCurrency : toCurrency;
+    return (
+      <>
+        {/* Desktop overlay backdrop */}
+        <div 
+          className="hidden sm:block fixed inset-0 z-[59] bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowCurrencyPicker(false)}
+        />
+        
+        <div className="fixed inset-0 pt-14 sm:pt-0 z-[60] flex flex-col bg-background sm:static sm:absolute sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[420px] sm:max-h-[500px] sm:rounded-2xl sm:border sm:border-border sm:shadow-2xl overflow-hidden">
+        {/* Header - mobile with back & code; desktop keeps title + X */}
+        <div className="p-4 sm:p-4 sm:bg-transparent bg-background">
+          <div className="flex items-center sm:hidden relative">
+            <button
+              onClick={() => setShowCurrencyPicker(false)}
+              className="p-2 hover:opacity-70 active:opacity-50 transition-opacity z-10"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <span className="absolute inset-0 flex items-center justify-center text-base font-semibold text-muted-foreground">Currencies</span>
+          </div>
+          <div className="hidden sm:flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Currencies</h2>
+            <button
+              onClick={() => setShowCurrencyPicker(false)}
+              className="p-2 rounded-md bg-muted/70 border border-border shadow-sm hover:bg-muted/80 active:bg-muted/90 transition-colors"
+              aria-label="Close currency picker"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="border-t border-border sm:bg-transparent bg-background" aria-hidden />
+
+        {/* Search */}
+        <div className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-muted/40 rounded-md border border-primary/60 pl-10 pr-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+
+        {/* Currency List */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredCurrencies.map((curr) => (
+            <button
+              key={curr.code}
+              onClick={() => handleCurrencySelect(curr.code)}
+              className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 active:bg-muted transition-colors"
+            >
+              <span className="text-4xl">{curr.flag}</span>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">{curr.name}</p>
+              </div>
+              <span className="text-muted-foreground font-semibold">{curr.code}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col sm:glass-card sm:rounded-2xl md:rounded-3xl p-0 overflow-hidden">
+      {/* Currency Display Section */}
+      <div className="flex-1 flex flex-col">
+        {/* From Currency */}
+        <button
+          onClick={() => openCurrencyPicker("from")}
+          className="flex items-center gap-4 p-6 sm:p-4 border-b-2 border-border hover:bg-muted/30 transition-colors bg-muted/20 sm:bg-transparent"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-5xl sm:text-4xl">{fromCurr?.flag}</span>
+            <span className="text-sm font-semibold text-muted-foreground">{fromCurrency}</span>
+          </div>
+          <div className="flex-1 text-right">
+            <p className="text-5xl sm:text-3xl md:text-4xl font-bold text-foreground">{amount}</p>
+          </div>
+        </button>
+
+        {/* To Currency */}
+        <button
+          onClick={() => openCurrencyPicker("to")}
+          className="flex items-center gap-4 p-6 sm:p-4 border-b-2 border-border hover:bg-muted/30 transition-colors bg-muted/20 sm:bg-muted/10"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-5xl sm:text-4xl">{toCurr?.flag}</span>
+            <span className="text-sm font-semibold text-muted-foreground">{toCurrency}</span>
+          </div>
+          <div className="flex-1 text-right">
+            <p className="text-5xl sm:text-3xl md:text-4xl font-bold text-foreground">
+              {loading ? "..." : result}
+            </p>
+          </div>
+        </button>
+      </div>
+
+      {/* Mobile Bottom Navigation - Above Keypad */}
+      <div className="sm:hidden bg-background border-b-2 border-border px-6 py-3 flex items-center justify-around">
+        <button
+          onClick={onOpenHistory}
+          className="p-3 rounded-full hover:bg-muted/30 transition-colors"
+          aria-label="History"
+        >
+          <History className="w-6 h-6 text-foreground" />
+        </button>
+        <button
+          onClick={() => onModeChange?.("calculator")}
+          className={`p-3 rounded-full transition-colors ${
+            mode === "calculator" ? "bg-primary/20" : "hover:bg-muted/30"
+          }`}
+          aria-label="Calculator"
+        >
+          <Calculator className={`w-6 h-6 ${mode === "calculator" ? "text-primary" : "text-foreground"}`} />
+        </button>
+        <button
+          onClick={() => onModeChange?.("currency")}
+          className={`p-3 rounded-full transition-colors ${
+            mode === "currency" ? "bg-primary/20" : "hover:bg-muted/30"
+          }`}
+          aria-label="Currency Converter"
+        >
+          <DollarSign className={`w-6 h-6 ${mode === "currency" ? "text-primary" : "text-foreground"}`} />
+        </button>
+      </div>
+
+      {/* Number Pad */}
+      <div className="px-4 pt-4 pb-4 sm:p-3 bg-background">
+        <div className="grid grid-cols-4 gap-2">
+          {/* Row 1 */}
+          <button onClick={handleClear} className="rounded-2xl sm:rounded-xl h-14 sm:h-12 text-xl font-semibold bg-destructive/80 text-destructive-foreground hover:bg-destructive active:brightness-95 transition-colors">
+            C
+          </button>
+          <button onClick={handleBackspace} className="rounded-2xl sm:rounded-xl h-14 sm:h-12 text-xl font-semibold bg-primary/80 text-primary-foreground hover:bg-primary active:brightness-95 transition-colors">
+            ←
+          </button>
+          <button onClick={handleSwapCurrencies} className="rounded-2xl sm:rounded-xl h-14 sm:h-12 bg-accent text-accent-foreground hover:brightness-110 active:brightness-95 transition-colors">
+            <ArrowDownUp className="w-5 h-5 mx-auto" />
+          </button>
+          <button onClick={() => handleOperator("÷")} className="calc-operator rounded-xl h-14 sm:h-12 text-2xl">
+            ÷
+          </button>
+
+          {/* Row 2 */}
+          <button onClick={() => handleNumberClick("7")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            7
+          </button>
+          <button onClick={() => handleNumberClick("8")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            8
+          </button>
+          <button onClick={() => handleNumberClick("9")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            9
+          </button>
+          <button onClick={() => handleOperator("×")} className="calc-operator rounded-xl h-14 sm:h-12 text-2xl">
+            ×
+          </button>
+
+          {/* Row 3 */}
+          <button onClick={() => handleNumberClick("4")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            4
+          </button>
+          <button onClick={() => handleNumberClick("5")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            5
+          </button>
+          <button onClick={() => handleNumberClick("6")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            6
+          </button>
+          <button onClick={() => handleOperator("-")} className="calc-operator rounded-xl h-14 sm:h-12 text-2xl">
+            -
+          </button>
+
+          {/* Row 4 */}
+          <button onClick={() => handleNumberClick("1")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            1
+          </button>
+          <button onClick={() => handleNumberClick("2")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            2
+          </button>
+          <button onClick={() => handleNumberClick("3")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            3
+          </button>
+          <button onClick={() => handleOperator("+")} className="calc-operator rounded-xl h-14 sm:h-12 text-2xl">
+            +
+          </button>
+
+          {/* Row 5 */}
+          <button onClick={() => handleNumberClick("0")} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            0
+          </button>
+          <button onClick={handleDecimal} className="calc-button rounded-xl h-14 sm:h-12 text-2xl">
+            .
+          </button>
+          <button onClick={handlePercentage} className="calc-button rounded-xl h-14 sm:h-12 text-xl">
+            %
+          </button>
+          <button onClick={handleEquals} className="calc-equals rounded-xl h-14 sm:h-12 text-2xl">
+            =
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Info */}
+      <div className="pt-4 pb-10 px-3 sm:p-4 border-t border-border bg-background/50">
+        <div className="space-y-1">
+          {rates[toCurrency] && fromCurrency !== toCurrency && (
+            <p className="text-xs text-muted-foreground text-center mb-1.5">
+              {lastUpdated} • 1 {fromCurrency} = {rates[toCurrency].toFixed(2)} {toCurrency}
+            </p>
+          )}
+          <p className="hidden sm:block text-xs text-muted-foreground text-center">
+            You can use your keyboard to type numbers and operators
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CurrencyConverter;
