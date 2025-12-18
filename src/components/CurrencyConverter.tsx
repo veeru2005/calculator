@@ -105,6 +105,7 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
   const [pairLoading, setPairLoading] = useState<boolean>(false);
   const [pairRate, setPairRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState<string>("");
   const [showCurrencyPicker, setShowCurrencyPicker] = useState<boolean>(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -124,6 +125,18 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
       hour12: true,
     });
   };
+
+  // Update current time every second
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(formatUpdated(new Date()));
+    };
+    
+    updateTime(); // Set initial time
+    const interval = setInterval(updateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchPairRate = async (from: string, to: string) => {
     const fromUpper = from.toUpperCase();
@@ -462,7 +475,8 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
 
   const handleNumberClick = (num: string) => {
     setAmount((prev) => {
-      if (prev === "0" || prev === "1" && amount.length === 1) return num;
+      if (prev === "0") return num;
+      if (prev === "1" && prev.length === 1 && num === "1") return "1";
       return prev + num;
     });
   };
@@ -781,7 +795,7 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
         <div className="space-y-1">
           {pairRate !== null && fromCurrency !== toCurrency && !loading && !pairLoading && result !== "Rate unavailable" && (
             <p className="text-xs text-muted-foreground text-center mb-1.5">
-              {lastUpdated} • 1 {fromCurrency} = {pairRate.toFixed(4)} {toCurrency}
+              {currentTime} • 1 {fromCurrency} = {pairRate.toFixed(4)} {toCurrency}
             </p>
           )}
           <p className="hidden sm:block text-xs text-muted-foreground text-center">
