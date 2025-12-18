@@ -1,28 +1,48 @@
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Calculator</title>
-  <meta name="description" content="Beautiful Calculator with animated theme" />
-  <meta name="author" content="Calculator" />
+    <title>Calculator</title>
+    <meta name="description" content="Beautiful Calculator with animated theme" />
+    <meta name="author" content="Calculator" />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Calculator" />
-  <meta property="og:description" content="Beautiful & Functional Calculator" />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://smart-calcify.netlify.app/" />
-  <meta property="og:image" content="https://smart-calcify.netlify.app/calculator.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
+    <!-- Open Graph (Telegram, Facebook, WhatsApp) -->
+    <meta property="og:title" content="Calculator" />
+    <meta property="og:description" content="Beautiful & Functional Calculator" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://smart-calcify.netlify.app/" />
+    <meta
+      property="og:image"
+      content="https://smart-calcify.netlify.app/calculator.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Calculator" />
-  <meta name="twitter:description" content="Beautiful & Functional Calculator" />
-  <meta name="twitter:image" content="https://smart-calcify.netlify.app/calculator.png" />
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Calculator" />
+    <meta
+      name="twitter:description"
+      content="Beautiful & Functional Calculator"
+    />
+    <meta
+      name="twitter:image"
+      content="https://smart-calcify.netlify.app/calculator.png"
+    />
 
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap"
-  />
-</head>
+    <!-- Google Font -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap"
+    />
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <!-- IMPORTANT: keep leading slash -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
