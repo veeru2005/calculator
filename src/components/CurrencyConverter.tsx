@@ -18,6 +18,83 @@ interface CurrencyConverterProps {
   onModeChange?: (mode: "calculator" | "currency") => void;
 }
 
+type RestCountry = {
+  name?: { common?: string };
+  flag?: string;
+  cca2?: string;
+  currencies?: {
+    [code: string]: {
+      name?: string;
+      symbol?: string;
+    };
+  };
+};
+
+const normalizeRates = (rates: ExchangeRates | null | undefined): ExchangeRates => {
+  if (!rates) return {};
+  return Object.fromEntries(
+    Object.entries(rates).map(([code, value]) => [code.toUpperCase(), value])
+  );
+};
+
+const baseCurrencies: Currency[] = [
+  { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
+  { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
+  { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
+  { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
+  { code: "AUD", name: "Australian Dollar", symbol: "A$", flag: "🇦🇺" },
+  { code: "CAD", name: "Canadian Dollar", symbol: "C$", flag: "🇨🇦" },
+  { code: "CHF", name: "Swiss Franc", symbol: "CHF", flag: "🇨🇭" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥", flag: "🇨🇳" },
+  { code: "INR", name: "Indian Rupee", symbol: "₹", flag: "🇮🇳" },
+  { code: "MXN", name: "Mexican Peso", symbol: "$", flag: "🇲🇽" },
+  { code: "BRL", name: "Brazilian Real", symbol: "R$", flag: "🇧🇷" },
+  { code: "ZAR", name: "South African Rand", symbol: "R", flag: "🇿🇦" },
+  { code: "SGD", name: "Singapore Dollar", symbol: "S$", flag: "🇸🇬" },
+  { code: "NZD", name: "New Zealand Dollar", symbol: "NZ$", flag: "🇳🇿" },
+  { code: "KRW", name: "South Korean Won", symbol: "₩", flag: "🇰🇷" },
+  { code: "AED", name: "UAE Dirham", symbol: "د.إ", flag: "🇦🇪" },
+  { code: "SAR", name: "Saudi Riyal", symbol: "﷼", flag: "🇸🇦" },
+  { code: "THB", name: "Thai Baht", symbol: "฿", flag: "🇹🇭" },
+  { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
+  { code: "VND", name: "Vietnamese Dong", symbol: "₫", flag: "🇻🇳" },
+  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
+  { code: "RUB", name: "Russian Ruble", symbol: "₽", flag: "🇷🇺" },
+  { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$", flag: "🇭🇰" },
+  { code: "SEK", name: "Swedish Krona", symbol: "kr", flag: "🇸🇪" },
+  { code: "NOK", name: "Norwegian Krone", symbol: "kr", flag: "🇳🇴" },
+  { code: "DKK", name: "Danish Krone", symbol: "kr", flag: "🇩🇰" },
+  { code: "PLN", name: "Polish Zloty", symbol: "zł", flag: "🇵🇱" },
+  { code: "TRY", name: "Turkish Lira", symbol: "₺", flag: "🇹🇷" },
+  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM", flag: "🇲🇾" },
+  { code: "PHP", name: "Philippine Peso", symbol: "₱", flag: "🇵🇭" },
+  { code: "CZK", name: "Czech Koruna", symbol: "Kč", flag: "🇨🇿" },
+  { code: "ILS", name: "Israeli Shekel", symbol: "₪", flag: "🇮🇱" },
+  { code: "CLP", name: "Chilean Peso", symbol: "$", flag: "🇨🇱" },
+  { code: "ARS", name: "Argentine Peso", symbol: "$", flag: "🇦🇷" },
+  { code: "COP", name: "Colombian Peso", symbol: "$", flag: "🇨🇴" },
+  { code: "PEN", name: "Peruvian Sol", symbol: "S/", flag: "🇵🇪" },
+  { code: "EGP", name: "Egyptian Pound", symbol: "£", flag: "🇪🇬" },
+  { code: "HUF", name: "Hungarian Forint", symbol: "Ft", flag: "🇭🇺" },
+  { code: "RON", name: "Romanian Leu", symbol: "lei", flag: "🇷🇴" },
+  { code: "BGN", name: "Bulgarian Lev", symbol: "лв", flag: "🇧🇬" },
+  { code: "HRK", name: "Croatian Kuna", symbol: "kn", flag: "🇭🇷" },
+  { code: "ISK", name: "Icelandic Króna", symbol: "kr", flag: "🇮🇸" },
+  { code: "UAH", name: "Ukrainian Hryvnia", symbol: "₴", flag: "🇺🇦" },
+  { code: "BDT", name: "Bangladeshi Taka", symbol: "৳", flag: "🇧🇩" },
+  { code: "LKR", name: "Sri Lankan Rupee", symbol: "₨", flag: "🇱🇰" },
+  { code: "NPR", name: "Nepalese Rupee", symbol: "₨", flag: "🇳🇵" },
+  { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك", flag: "🇰🇼" },
+  { code: "BHD", name: "Bahraini Dinar", symbol: "د.ب", flag: "🇧🇭" },
+  { code: "OMR", name: "Omani Rial", symbol: "﷼", flag: "🇴🇲" },
+  { code: "QAR", name: "Qatari Riyal", symbol: "﷼", flag: "🇶🇦" },
+  { code: "KES", name: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪" },
+  { code: "NGN", name: "Nigerian Naira", symbol: "₦", flag: "🇳🇬" },
+  { code: "GHS", name: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭" },
+  { code: "MAD", name: "Moroccan Dirham", symbol: "د.م.", flag: "🇲🇦" },
+  { code: "TWD", name: "Taiwan Dollar", symbol: "NT$", flag: "🇹🇼" },
+];
+
 const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConverterProps = {}) => {
   const [amount, setAmount] = useState<string>("1");
   const [fromCurrency, setFromCurrency] = useState<string>("USD");
@@ -29,76 +106,127 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
   const [showCurrencyPicker, setShowCurrencyPicker] = useState<boolean>(false);
   const [selectingFor, setSelectingFor] = useState<"from" | "to">("from");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currencies, setCurrencies] = useState<Currency[]>(baseCurrencies);
+  const [currenciesLoading, setCurrenciesLoading] = useState<boolean>(true);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
 
-  const currencies: Currency[] = [
-    { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
-    { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
-    { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
-    { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
-    { code: "AUD", name: "Australian Dollar", symbol: "A$", flag: "🇦🇺" },
-    { code: "CAD", name: "Canadian Dollar", symbol: "C$", flag: "🇨🇦" },
-    { code: "CHF", name: "Swiss Franc", symbol: "CHF", flag: "🇨🇭" },
-    { code: "CNY", name: "Chinese Yuan", symbol: "¥", flag: "🇨🇳" },
-    { code: "INR", name: "Indian Rupee", symbol: "₹", flag: "🇮🇳" },
-    { code: "MXN", name: "Mexican Peso", symbol: "$", flag: "🇲🇽" },
-    { code: "BRL", name: "Brazilian Real", symbol: "R$", flag: "🇧🇷" },
-    { code: "ZAR", name: "South African Rand", symbol: "R", flag: "🇿🇦" },
-    { code: "SGD", name: "Singapore Dollar", symbol: "S$", flag: "🇸🇬" },
-    { code: "NZD", name: "New Zealand Dollar", symbol: "NZ$", flag: "🇳🇿" },
-    { code: "KRW", name: "South Korean Won", symbol: "₩", flag: "🇰🇷" },
-    { code: "AED", name: "UAE Dirham", symbol: "د.إ", flag: "🇦🇪" },
-    { code: "SAR", name: "Saudi Riyal", symbol: "﷼", flag: "🇸🇦" },
-    { code: "THB", name: "Thai Baht", symbol: "฿", flag: "🇹🇭" },
-    { code: "PKR", name: "Pakistani Rupee", symbol: "₨", flag: "🇵🇰" },
-    { code: "VND", name: "Vietnamese Dong", symbol: "₫", flag: "🇻🇳" },
-    { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
-    { code: "RUB", name: "Russian Ruble", symbol: "₽", flag: "🇷🇺" },
-    { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$", flag: "🇭🇰" },
-    { code: "SEK", name: "Swedish Krona", symbol: "kr", flag: "🇸🇪" },
-    { code: "NOK", name: "Norwegian Krone", symbol: "kr", flag: "🇳🇴" },
-    { code: "DKK", name: "Danish Krone", symbol: "kr", flag: "🇩🇰" },
-    { code: "PLN", name: "Polish Zloty", symbol: "zł", flag: "🇵🇱" },
-    { code: "TRY", name: "Turkish Lira", symbol: "₺", flag: "🇹🇷" },
-    { code: "MYR", name: "Malaysian Ringgit", symbol: "RM", flag: "🇲🇾" },
-    { code: "PHP", name: "Philippine Peso", symbol: "₱", flag: "🇵🇭" },
-    { code: "CZK", name: "Czech Koruna", symbol: "Kč", flag: "🇨🇿" },
-    { code: "ILS", name: "Israeli Shekel", symbol: "₪", flag: "🇮🇱" },
-    { code: "CLP", name: "Chilean Peso", symbol: "$", flag: "🇨🇱" },
-    { code: "ARS", name: "Argentine Peso", symbol: "$", flag: "🇦🇷" },
-    { code: "COP", name: "Colombian Peso", symbol: "$", flag: "🇨🇴" },
-    { code: "PEN", name: "Peruvian Sol", symbol: "S/", flag: "🇵🇪" },
-    { code: "EGP", name: "Egyptian Pound", symbol: "£", flag: "🇪🇬" },
-    { code: "HUF", name: "Hungarian Forint", symbol: "Ft", flag: "🇭🇺" },
-    { code: "RON", name: "Romanian Leu", symbol: "lei", flag: "🇷🇴" },
-    { code: "BGN", name: "Bulgarian Lev", symbol: "лв", flag: "🇧🇬" },
-    { code: "HRK", name: "Croatian Kuna", symbol: "kn", flag: "🇭🇷" },
-    { code: "ISK", name: "Icelandic Króna", symbol: "kr", flag: "🇮🇸" },
-    { code: "UAH", name: "Ukrainian Hryvnia", symbol: "₴", flag: "🇺🇦" },
-    { code: "BDT", name: "Bangladeshi Taka", symbol: "৳", flag: "🇧🇩" },
-    { code: "LKR", name: "Sri Lankan Rupee", symbol: "₨", flag: "🇱🇰" },
-    { code: "NPR", name: "Nepalese Rupee", symbol: "₨", flag: "🇳🇵" },
-    { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك", flag: "🇰🇼" },
-    { code: "BHD", name: "Bahraini Dinar", symbol: "د.ب", flag: "🇧🇭" },
-    { code: "OMR", name: "Omani Rial", symbol: "﷼", flag: "🇴🇲" },
-    { code: "QAR", name: "Qatari Riyal", symbol: "﷼", flag: "🇶🇦" },
-    { code: "KES", name: "Kenyan Shilling", symbol: "KSh", flag: "🇰🇪" },
-    { code: "NGN", name: "Nigerian Naira", symbol: "₦", flag: "🇳🇬" },
-    { code: "GHS", name: "Ghanaian Cedi", symbol: "₵", flag: "🇬🇭" },
-    { code: "MAD", name: "Moroccan Dirham", symbol: "د.م.", flag: "🇲🇦" },
-    { code: "TWD", name: "Taiwan Dollar", symbol: "NT$", flag: "🇹🇼" },
-  ];
+  // Pull latest ISO-4217 currencies with flags so we cover every country automatically.
+  useEffect(() => {
+    let cancelled = false;
+    const loadCurrencies = async () => {
+      try {
+        setCurrenciesLoading(true);
+        const res = await fetch("https://restcountries.com/v3.1/all?fields=currencies,flag,cca2,name");
+        const data: RestCountry[] = await res.json();
 
-  // Fetch exchange rates from API
+        const map = new Map<string, Currency>();
+
+        // Start with base list so major currencies always exist
+        baseCurrencies.forEach((curr) => map.set(curr.code, curr));
+
+        data.forEach((country) => {
+          const flag = country.flag || "🏳️";
+          const countryName = country.name?.common ?? "";
+          if (!country.currencies) return;
+
+          Object.entries(country.currencies).forEach(([code, meta]) => {
+            if (map.has(code)) return;
+            map.set(code, {
+              code,
+              name: meta.name || countryName || code,
+              symbol: meta.symbol || code,
+              flag,
+            });
+          });
+        });
+
+        const merged = Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code));
+        if (!cancelled) {
+          setCurrencies(merged);
+          setCurrencyError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setCurrencyError("Could not load full currency list. Showing defaults.");
+          setCurrencies(baseCurrencies);
+        }
+      } finally {
+        if (!cancelled) setCurrenciesLoading(false);
+      }
+    };
+
+    loadCurrencies();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch exchange rates from multiple providers with cache-busting for most accurate rates
   const fetchRates = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `https://api.exchangerate-api.com/v4/latest/${fromCurrency}`
-      );
-      const data = await response.json();
-      setRates(data.rates);
-      const now = new Date();
-      setLastUpdated(now.toLocaleString('en-US', { 
+
+      const today = new Date().toISOString().split('T')[0];
+      const providers = [
+        {
+          name: "fawazahmed-currency-api",
+          url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${today}/v1/currencies/${fromCurrency.toLowerCase()}.json`,
+          extractRates: (data: any) => data?.[fromCurrency.toLowerCase()] as ExchangeRates,
+          extractDate: (data: any) => data?.date as string | undefined,
+        },
+        {
+          name: "fawazahmed-currency-api-latest",
+          url: `https://latest.currency-api.pages.dev/v1/currencies/${fromCurrency.toLowerCase()}.json`,
+          extractRates: (data: any) => data?.[fromCurrency.toLowerCase()] as ExchangeRates,
+          extractDate: (data: any) => data?.date as string | undefined,
+        },
+        {
+          name: "frankfurter",
+          url: `https://api.frankfurter.app/latest?from=${fromCurrency}&t=${Date.now()}`,
+          extractRates: (data: any) => data?.rates as ExchangeRates,
+          extractDate: (data: any) => data?.date as string | undefined,
+        },
+        {
+          name: "exchangerate-api",
+          url: `https://open.er-api.com/v6/latest/${fromCurrency}`,
+          extractRates: (data: any) => data?.rates as ExchangeRates,
+          extractDate: (data: any) => data?.time_last_update_utc ? new Date(data.time_last_update_utc).toISOString() : undefined,
+        },
+      ];
+
+      let nextRates: ExchangeRates | null = null;
+      let providerDate: string | undefined;
+
+      for (const provider of providers) {
+        try {
+          const res = await fetch(provider.url, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
+          if (!res.ok) throw new Error(`${provider.name} responded ${res.status}`);
+          const data = await res.json();
+          const rates = normalizeRates(provider.extractRates(data));
+          if (rates && Object.keys(rates).length > 0 && rates[toCurrency]) {
+            nextRates = rates;
+            providerDate = provider.extractDate(data);
+            console.log(`Using provider: ${provider.name}, USD->INR: ${rates['INR']}`);
+            break;
+          }
+        } catch (err) {
+          console.warn(`Provider ${provider.name} failed`, err);
+        }
+      }
+
+      if (!nextRates) {
+        throw new Error("Rate unavailable across providers");
+      }
+
+      setRates(nextRates);
+
+      const updated = providerDate ? new Date(providerDate) : new Date();
+      setLastUpdated(updated.toLocaleString('en-US', { 
         month: '2-digit', 
         day: '2-digit', 
         year: '2-digit', 
@@ -106,9 +234,10 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
         minute: '2-digit',
         hour12: true 
       }));
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching rates:", error);
+      setRates({});
+    } finally {
       setLoading(false);
     }
   };
@@ -328,7 +457,16 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
 
         {/* Currency List */}
         <div className="flex-1 overflow-y-auto">
-          {filteredCurrencies.map((curr) => (
+          {currenciesLoading && (
+            <p className="px-4 py-3 text-sm text-muted-foreground">Loading currencies…</p>
+          )}
+          {currencyError && !currenciesLoading && (
+            <p className="px-4 py-3 text-sm text-destructive">{currencyError}</p>
+          )}
+          {!currenciesLoading && filteredCurrencies.length === 0 && (
+            <p className="px-4 py-3 text-sm text-muted-foreground">No matches found.</p>
+          )}
+          {!currenciesLoading && filteredCurrencies.map((curr) => (
             <button
               key={curr.code}
               onClick={() => handleCurrencySelect(curr.code)}
