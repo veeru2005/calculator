@@ -642,3 +642,4 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
 };
 
 export default CurrencyConverter;
+
