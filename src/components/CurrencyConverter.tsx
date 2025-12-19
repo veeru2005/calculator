@@ -96,7 +96,7 @@ const baseCurrencies: Currency[] = [
 ];
 
 const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConverterProps = {}) => {
-  const [amount, setAmount] = useState<string>("1");
+  const [amount, setAmount] = useState<string>("0");
   const [fromCurrency, setFromCurrency] = useState<string>("USD");
   const [toCurrency, setToCurrency] = useState<string>("INR");
   const [rates, setRates] = useState<ExchangeRates>({});
@@ -470,13 +470,12 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
     const temp = fromCurrency;
     setFromCurrency(toCurrency);
     setToCurrency(temp);
-    setAmount("1");
+    setAmount("0");
   };
 
   const handleNumberClick = (num: string) => {
     setAmount((prev) => {
       if (prev === "0") return num;
-      if (prev === "1" && prev.length === 1 && num === "1") return "1";
       return prev + num;
     });
   };
@@ -525,7 +524,7 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
   };
 
   const handleClear = () => {
-    setAmount("1");
+    setAmount("0");
   };
 
   const handleBackspace = () => {
@@ -533,7 +532,7 @@ const CurrencyConverter = ({ onOpenHistory, mode, onModeChange }: CurrencyConver
       if (prev.length > 1) {
         return prev.slice(0, -1);
       }
-      return "1";
+      return "0";
     });
   };
 
